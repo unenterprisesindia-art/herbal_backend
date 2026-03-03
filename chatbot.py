@@ -3,13 +3,19 @@ from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# --- 1. Initialize Flask App ---
 app = Flask(__name__)
-# CORS allows your GitHub Pages website to talk to this Python server
+
+# MANUAL CORS FIX
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 CORS(app) 
 
-# --- 2. Initialize Firebase ---
-# Make sure serviceAccountKey.json is in the same folder
+# Initialize Firebase
 try:
     cred = credentials.Certificate("serviceAccountKey.json")
     firebase_admin.initialize_app(cred)
@@ -18,10 +24,12 @@ try:
 except Exception as e:
     print(f"Firebase Error: {e}")
 
-# --- 3. The API Endpoint ---
-@app.route('/chat', methods=['POST'])
+@app.route('/chat', methods=['POST', 'OPTIONS']) # Added OPTIONS for safety
 def chat():
-    # Get the message from the website
+    # Handle Preflight Request for CORS
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+
     data = request.get_json()
     user_message = data.get('message', '').lower().strip()
 
@@ -39,24 +47,20 @@ def chat():
         name = herb_data.get('name', '').lower()
         category = herb_data.get('category', '').lower()
         
-        # Handle benefits (list or string)
         raw_benefits = herb_data.get('benefits', [])
         if isinstance(raw_benefits, list):
             benefits_str = " ".join(raw_benefits).lower()
         else:
             benefits_str = str(raw_benefits).lower()
 
-        # Check for match
         if user_message in name or user_message in category or user_message in benefits_str:
             found_herbs.append(herb_data)
 
-    # Format the reply
     if not found_herbs:
         reply = f"I couldn't find information about '{user_message}'. Try 'Brahmi' or 'Immunity'."
     else:
         reply_lines = []
         for herb in found_herbs:
-            # Create a clean text response
             line = (
                 f"🌱 **{herb.get('name')}**\n"
                 f"📂 Category: {herb.get('category')}\n"
@@ -69,6 +73,5 @@ def chat():
 
     return jsonify({'reply': reply})
 
-# --- 4. Run the Server ---
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
