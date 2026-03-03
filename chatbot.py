@@ -1,19 +1,18 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+# REMOVED: from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, firestore
 
 app = Flask(__name__)
 
-# MANUAL CORS FIX
+# --- MANUAL CORS FIX (Keep this) ---
 @app.after_request
 def after_request(response):
     response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
     return response
-
-CORS(app) 
+# ------------------------------------
 
 # Initialize Firebase
 try:
@@ -24,9 +23,9 @@ try:
 except Exception as e:
     print(f"Firebase Error: {e}")
 
-@app.route('/chat', methods=['POST', 'OPTIONS']) # Added OPTIONS for safety
+@app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
-    # Handle Preflight Request for CORS
+    # Handle Preflight Request
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
