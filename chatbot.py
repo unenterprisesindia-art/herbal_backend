@@ -1,27 +1,28 @@
 from flask import Flask, request, jsonify
-# REMOVED: from flask_cors import CORS
 import firebase_admin
 from firebase_admin import credentials, firestore
 
 app = Flask(__name__)
 
-# --- MANUAL CORS FIX (Keep this) ---
+# --- MANUAL CORS FIX (Works perfectly on Vercel) ---
 @app.after_request
 def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
     return response
-# ------------------------------------
+# --------------------------------------------------
 
 # Initialize Firebase
-try:
-    cred = credentials.Certificate("serviceAccountKey.json")
-    firebase_admin.initialize_app(cred)
-    db = firestore.client()
-    print("✅ Firebase Connected")
-except Exception as e:
-    print(f"Firebase Error: {e}")
+# We check if the app is already initialized to avoid errors on reload
+if not firebase_admin._apps:
+    try:
+        cred = credentials.Certificate("serviceAccountKey.json")
+        firebase_admin.initialize_app(cred)
+    except Exception as e:
+        print(f"Firebase Init Error: {e}")
+
+db = firestore.client()
 
 @app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
@@ -72,5 +73,4 @@ def chat():
 
     return jsonify({'reply': reply})
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+# NOTE: We removed app.run() because Vercel handles the server automatically
