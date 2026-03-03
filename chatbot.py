@@ -12,6 +12,7 @@ app = Flask(__name__)
 def after_request(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    # FIXED LINE BELOW (Added the = sign)
     response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
     return response
 # -----------------------
