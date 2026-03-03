@@ -1,32 +1,46 @@
 from flask import Flask, request, jsonify
 import firebase_admin
 from firebase_admin import credentials, firestore
+import os
+import json
+import base64
 
 app = Flask(__name__)
 
-# --- MANUAL CORS FIX (Works perfectly on Vercel) ---
+# --- MANUAL CORS FIX ---
 @app.after_request
 def after_request(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
     response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
     return response
-# --------------------------------------------------
+# -----------------------
 
 # Initialize Firebase
-# We check if the app is already initialized to avoid errors on reload
-if not firebase_admin._apps:
-    try:
+try:
+    firebase_key_b64 = os.environ.get('FIREBASE_KEY')
+    
+    if firebase_key_b64:
+        # Decode the Base64 string back to JSON
+        firebase_key_json = base64.b64decode(firebase_key_b64).decode('utf-8')
+        cred_dict = json.loads(firebase_key_json)
+        cred = credentials.Certificate(cred_dict)
+        print("✅ Firebase Connected via Base64 ENV")
+    else:
+        # Local fallback
         cred = credentials.Certificate("serviceAccountKey.json")
-        firebase_admin.initialize_app(cred)
-    except Exception as e:
-        print(f"Firebase Init Error: {e}")
+        print("✅ Firebase Connected via File")
 
-db = firestore.client()
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(cred)
+    
+    db = firestore.client()
+
+except Exception as e:
+    print(f"❌ Firebase Init Error: {e}")
 
 @app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat():
-    # Handle Preflight Request
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
 
@@ -72,5 +86,3 @@ def chat():
         reply = "\n\n".join(reply_lines)
 
     return jsonify({'reply': reply})
-
-# NOTE: We removed app.run() because Vercel handles the server automatically
